@@ -14,7 +14,7 @@ channels = [] #array to communicate between one another
 
 def print_node(index, n):
 	print "_________" + " Identifier: " + str(index) + " _________"
-	print "Previous: " + str(n.pred) + " Successor: " + str(n.succ)
+	print "Previous: " + str(n.pred.id) + " Successor: " + str(n.succ.id)
 	i = 0
 	while i < len(n.finger_table):
 		print n.finger_table[i]
@@ -49,20 +49,19 @@ def read_inputs():
 		if "join" in command:
 			num = int(command.split(" ")[1])
 			n = node()
+			n.id = num
 			chord[num] = n
-			thread.start_new_thread(join, (n, num))
+			thread.start_new_thread(join, (n, chord[0]))
 			while finish == 0:
 				waiting = 1
 		command = ""
 
 
 def find_succesor(n, ident):
-	global finish
 	node_pred = find_predecessor(n, ident)
 	return node_pred.succ.id
 
 def find_predecessor(n, ident):
-	global finish
 	temp_node = n
 	while(ident <= temp_node.id or ident > temp_node.succ.id):
 		#print ident, temp_node.id, temp_node.succ
@@ -72,7 +71,6 @@ def find_predecessor(n, ident):
 	return temp_node
 
 def closest_preceding_finger(n, ident):
-	global finish
 	itr = m - 1
 	while itr >= 0:
 		#print n.id, n.finger_table[itr][1], ident
@@ -89,14 +87,14 @@ def join(n, n_prime):
 	update_others(n)
 	finish = 1
 
-def init_finger_table(n, n_prime):
-	global finish					
-	n.finger_table[1] = find_succesor(n_prime, n.finger_table[1][0])
+def init_finger_table(n, n_prime):				
+	n.finger_table[1][1] = find_succesor(n_prime, n.finger_table[1][0])
+	n.succ = n.finger_table[1][1]
 	n.pred = n.succ.pred
 	n.succ.pred = n
 	i = 0
 	while i < m - 2:
-		if(n.finger_table[i + 1][0] < n.id and n.finger_table[i + 1][0] >= n.finger_table[i][1]):
+		if(n.finger_table[i + 1][0] >= n.id and n.finger_table[i + 1][0] < n.finger_table[i][1]):
 			n.finger_table[i + 1][1] = n.finger_table[i][1]
 		else:
 			n.finger_table[i + 1][1] = find_succesor(n_prime, n.finger_table[i + 1][0])
@@ -114,8 +112,6 @@ def update_finger_table(n, s, i):
 		p = n.predecessor
 		update_finger_table(p, s, i)
 	
-
-
 
 def main():
 	global finish
