@@ -4,7 +4,6 @@ from math import pow, log
 import thread
 from threading import current_thread
 from collections import namedtuple
-finger_table_entry = namedtuple("entry", "start succ")
 global finish
 m = 8
 size = int(pow(2, 8))
@@ -14,16 +13,17 @@ channels = [] #array to communicate between one another
 
 def print_node(index, n):
 	print "_________" + " Identifier: " + str(index) + " _________"
-	print "Previous: " + str(n.pred.id) + " Successor: " + str(n.succ.id)
+	#print "Previous: " + str(n.pred.id) + " Successor: " + str(n.succ.id)
 	i = 0
 	while i < len(n.finger_table):
-		print n.finger_table[i]
+		print "Start: " + str(n.finger_table[i][0]) + "\tSucc: " + str(n.finger_table[i][1])
 		i+=1
 
 def print_system():
 	for i in range(0, size):
 		if not isinstance(chord[i], int):
 			print_node(i, chord[i])
+			print "--------------------------------------"
 
 def log2(x):
      return log(x)/log(2)
@@ -37,10 +37,18 @@ def initialize_system():
 		chord.append(i)
 		n.key_value[i] = 0
 	for i in range(0, m):
-		start = pow(2, i)
-		fte = finger_table_entry(start = int(start), succ = int(0))
+		fte = [int(pow(2, i)), int(0)]
 		n.finger_table.append(fte)
 	chord[0] = n #index 0 in the chord is a node	
+
+def create_node(num):
+	n = node()
+	n.id = num
+	chord[num] = n
+	for i in range(0, m):
+		fte = [int(((num + pow(2, i)) % size)), int(0)]
+		n.finger_table.append(fte)
+	return n	
 
 def read_inputs():
 	global finish
@@ -48,9 +56,8 @@ def read_inputs():
 		command = raw_input('--> ')
 		if "join" in command:
 			num = int(command.split(" ")[1])
-			n = node()
-			n.id = num
-			chord[num] = n
+			n = create_node(num)
+			print_system()
 			thread.start_new_thread(join, (n, chord[0]))
 			while finish == 0:
 				waiting = 1
