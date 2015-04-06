@@ -74,6 +74,12 @@ def create_node(num):
 		n.finger_table.append(fte)
 	return n	
 
+
+def find_node(node_to_find, n_prime):
+	return find_succesor(n_prime, node_to_find).id
+
+
+
 def read_inputs():
 	global finish
 	global node_count
@@ -98,7 +104,18 @@ def read_inputs():
 			if(val == True):
 				print "CHORD IS VALID"
 			else:
-				print "CHORD IS INVALID AT NODE " + str(val)		
+				print "CHORD IS INVALID AT NODE " + str(val)	
+		if "find" in command: #find command
+			parsed_command = command.split(" ")
+			node_to_find = int(parsed_command[1])
+			node_used_to_find = int(parsed_command[2])
+			if node_used_to_find < 0 or node_used_to_find >= size or node_to_find < 0 or node_to_find >= size:
+				print "Please enter values between 0 and " + size + " for p and k"
+				continue
+			if isinstance(chord[node_used_to_find], int):
+				print "Node " + node_used_to_find + " is an integer. Please enter a valid node."
+				continue
+			print "The node which has the key is " + str(find_node(node_to_find, chord[node_used_to_find]))
 		command = ""
 
 
