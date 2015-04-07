@@ -6,6 +6,7 @@ from threading import current_thread
 from collections import namedtuple
 global finish
 global node_count
+import random
 m = 8
 size = int(pow(2, m))
 chord = [] #array to represent circular chord system. Each index can either be of type node, or an integer to represent a key
@@ -45,8 +46,6 @@ def validate_system():
 				k += 1
 	return True				
 
-
-
 def log2(x):
      return log(x)/log(2)
 
@@ -74,15 +73,10 @@ def create_node(num):
 		n.finger_table.append(fte)
 	return n	
 
-
-def find_node(node_to_find, n_prime):
-	return find_succesor(n_prime, node_to_find).id
-
-
-
 def read_inputs():
 	global finish
 	global node_count
+	import random
 	while 1:
 		command = raw_input('--> ')
 		if "join" in command: #join command 
@@ -99,13 +93,13 @@ def read_inputs():
 			while finish == 0:
 				waiting = 1
 			finish = 0	
-			print_system()
 			val = validate_system()
+			print_system()
 			if(val == True):
 				print "CHORD IS VALID"
 			else:
-				print "CHORD IS INVALID AT NODE " + str(val)	
-		if "find" in command: #find command
+				print "CHORD IS INVALID AT NODE " + str(val)
+		elif "find" in command: #find command
 			parsed_command = command.split(" ")
 			node_to_find = int(parsed_command[1])
 			node_used_to_find = int(parsed_command[2])
@@ -113,28 +107,30 @@ def read_inputs():
 				print "Please enter values between 0 and " + size + " for p and k"
 				continue
 			if isinstance(chord[node_used_to_find], int):
-				print "Node " + node_used_to_find + " is an integer. Please enter a valid node."
+				print "Node " + str(node_used_to_find) + " is an integer. Please enter a valid node."
 				continue
 			print "The node which has the key is " + str(find_node(node_to_find, chord[node_used_to_find]))
+		else:
+			print "Please enter a valid command"
 		command = ""
 
 
+def find_node(node_to_find, n_prime):
+	return find_succesor(n_prime, node_to_find).id
+
 def find_succesor(n, ident):
+	if not isinstance(chord[int(ident)], int):
+		return chord[ident]
+
 	node_pred = find_predecessor(n, ident)
 	return node_pred.succ
 
 def find_predecessor(n, ident):
 	temp_node = n
 	global node_count
-	if (node_count == 2 and ident > n.succ.id and n.id == 0):
-		return  n.succ
-	elif node_count == 2 and n.id == 0:
-		return n
-	if (node_count == 2 and ident < n.id and n.id != 0):
-		return  chord[0]
-	elif node_count == 2 and n.id != 0:
-		return n			
-	while(ident <= temp_node.id or ident > temp_node.succ.id):
+	if not isinstance(chord[int(ident)], int):
+		return chord[int(ident)]
+	while(ident <= temp_node.id or ident >= temp_node.succ.id):
 		s = temp_node	
 		temp_node = closest_preceding_finger(temp_node, ident)
 		if temp_node == s:
@@ -156,14 +152,8 @@ def closest_preceding_finger(n, ident):
 def join(n, n_prime):
 	global finish
 	global node_count
-	if(node_count == 2):
-		chord[0].succ = n
-		n.succ = n_prime
-		init_finger_table(n, n_prime)
-		update_others(n)
-	else:
-		init_finger_table(n, n_prime)
-		update_others(n)	
+	init_finger_table(n, n_prime)
+	update_others(n)	
 	finish = 1
 
 def init_finger_table(n, n_prime):
@@ -191,15 +181,7 @@ def init_finger_table(n, n_prime):
 
 def update_others(n):
 	global node_count
-	i = 0
-	if(node_count == 2):
-		p = find_predecessor(n, n.id - pow(2, i) % size)
-		i = 0
-		while i < m and p.finger_table[i][0] <= n.id:
-			p.finger_table[i][1] = n
-			i+=1
-		return		
-
+	i = 0	
 	while i < m:
 		f = (n.id - pow(2, i)) % size
 		p = find_predecessor(n, f)
@@ -208,22 +190,24 @@ def update_others(n):
 		if(p.id == n.id and f >= p.id):
 			i += 1
 			continue	
-		update_finger_table(p, n, i, False)
+		update_finger_table(p, n, i)
 		i += 1
 
-def update_finger_table(n, s, i, flag):
+def update_finger_table(n, s, i):
 	if(n.finger_table[i][0] == 0):
-		n.finger_table[i][1] = chord[0]
+		n.finger_table[i][1] = chord[0]	
+	if not isinstance(chord[n.finger_table[i][0]], int):
+		n.finger_table[i][1] = chord[n.finger_table[i][0]]
+		p = n.pred
+		update_finger_table(p, s, i)
 	elif(s.id >= n.finger_table[i][0] and n.finger_table[i][1].id == 0):
 		n.finger_table[i][1] = s
 		p = n.pred
-		if(flag == False):
-			update_finger_table(p, s, i, True)
-	elif(s.id >= n.finger_table[i][0] and s.id <= n.finger_table[i][1].id):
+		update_finger_table(p, s, i)
+	elif(s.id >= n.finger_table[i][0] and s.id < n.finger_table[i][1].id):
 		n.finger_table[i][1] = s
 		p = n.pred
-		update_finger_table(p, s, i, False)
-	
+		update_finger_table(p, s, i)		
 
 def main():
 	global finish
