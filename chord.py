@@ -1,12 +1,13 @@
 #this file represents a chord system
 from node_class import node
 from math import pow, log
+import time
 import thread
 from threading import current_thread
 from collections import namedtuple
 global finish
 global node_count
-import random
+from random import randint
 m = 8
 size = int(pow(2, m))
 chord = [] #array to represent circular chord system. Each index can either be of type node, or an integer to represent a key
@@ -89,6 +90,21 @@ def read_inputs():
 			while finish == 0:
 				waiting = 1
 			finish = 0	
+			# for i in range(0, 32):
+			# 	num = randint(0, 255)
+			# 	#print num
+			# 	if num < 0 or num >= size:
+			# 		print "ENTER VALUE BETWEEN 0 AND " + str(size)
+			# 		continue
+			# 	if not isinstance(chord[num], int):
+			# 		print "NODE WITH IDENTIFIER " + str(num) + " ALREADY EXISTS"
+			# 		continue
+			# 	n = create_node(num)
+			# 	thread.start_new_thread(join, (n, chord[0]))
+			# 	while finish == 0:
+			# 		waiting = 1
+			# 	finish = 0
+			# 	i+=1	
 			val = validate_system()
 			print_system()
 			if(val == True):
