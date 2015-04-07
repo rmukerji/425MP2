@@ -50,8 +50,6 @@ def log2(x):
      return log(x)/log(2)
 
 def initialize_system():
-	global node_count
-	node_count += 1
 	n = node()
 	n.pred = n
 	n.succ = n
@@ -75,15 +73,13 @@ def create_node(num):
 
 def read_inputs():
 	global finish
-	global node_count
 	import random
 	while 1:
 		command = raw_input('--> ')
 		if "join" in command: #join command 
-			node_count += 1
 			num = int(command.split(" ")[1])
-			if num < 0 or num > 255:
-				print "ENTER VALUE BETWEEN 0 AND 255"
+			if num < 0 or num >= size:
+				print "ENTER VALUE BETWEEN 0 AND " + str(size)
 				continue
 			if not isinstance(chord[num], int):
 				print "NODE WITH IDENTIFIER " + str(num) + " ALREADY EXISTS"
@@ -104,10 +100,10 @@ def read_inputs():
 			node_to_find = int(parsed_command[1])
 			node_used_to_find = int(parsed_command[2])
 			if node_used_to_find < 0 or node_used_to_find >= size or node_to_find < 0 or node_to_find >= size:
-				print "Please enter values between 0 and " + size + " for p and k"
+				print "Please enter values between 0 and " + str(size) + " for p and k"
 				continue
 			if isinstance(chord[node_used_to_find], int):
-				print "Node " + str(node_used_to_find) + " is an integer. Please enter a valid node."
+				print str(node_used_to_find) + " is an integer. Please enter a valid node id."
 				continue
 			print "The node which has the key is " + str(find_node(node_to_find, chord[node_used_to_find]))
 		else:
@@ -127,7 +123,6 @@ def find_succesor(n, ident):
 
 def find_predecessor(n, ident):
 	temp_node = n
-	global node_count
 	if not isinstance(chord[int(ident)], int):
 		return chord[int(ident)]
 	while(ident <= temp_node.id or ident >= temp_node.succ.id):
@@ -151,19 +146,13 @@ def closest_preceding_finger(n, ident):
 
 def join(n, n_prime):
 	global finish
-	global node_count
 	init_finger_table(n, n_prime)
 	update_others(n)	
 	finish = 1
 
 def init_finger_table(n, n_prime):
-	global node_count	
-	if(n.id == size - 1): #when we add node 255 to the system
-		n.succ = chord[0]
-		n.finger_table[0][1] = chord[0]
-	else:		
-		n.finger_table[0][1] = find_succesor(n_prime, n.finger_table[0][0])
-		n.succ = n.finger_table[0][1]
+	n.finger_table[0][1] = find_succesor(n_prime, n.finger_table[0][0])
+	n.succ = n.finger_table[0][1]
 	n.pred = n.succ.pred
 	n.pred.succ = n
 	n.succ.pred = n
@@ -180,7 +169,6 @@ def init_finger_table(n, n_prime):
 		i += 1			
 
 def update_others(n):
-	global node_count
 	i = 0	
 	while i < m:
 		f = (n.id - pow(2, i)) % size
@@ -211,8 +199,6 @@ def update_finger_table(n, s, i):
 
 def main():
 	global finish
-	global node_count
-	node_count = 0
 	finish = 0
 	initialize_system() #initializes the system with a node at position 0
 	print_system()
