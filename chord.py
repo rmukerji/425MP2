@@ -78,33 +78,33 @@ def read_inputs():
 	while 1:
 		command = raw_input('--> ')
 		if "join" in command: #join command 
-			# num = int(command.split(" ")[1])
-			# if num < 0 or num >= size:
-			# 	print "ENTER VALUE BETWEEN 0 AND " + str(size)
-			# 	continue
-			# if not isinstance(chord[num], int):
-			# 	print "NODE WITH IDENTIFIER " + str(num) + " ALREADY EXISTS"
-			# 	continue
-			# n = create_node(num)
-			# thread.start_new_thread(join, (n, chord[0]))
-			# while finish == 0:
-			# 	waiting = 1
-			# finish = 0	
-			for i in range(0, 32):
-				num = randint(0, 255)
-				#print num
-				if num < 0 or num >= size:
-					print "ENTER VALUE BETWEEN 0 AND " + str(size)
-					continue
-				if not isinstance(chord[num], int):
-					print "NODE WITH IDENTIFIER " + str(num) + " ALREADY EXISTS"
-					continue
-				n = create_node(num)
-				thread.start_new_thread(join, (n, chord[0]))
-				while finish == 0:
-					waiting = 1
-				finish = 0
-				i+=1	
+			num = int(command.split(" ")[1])
+			if num < 0 or num >= size:
+				print "ENTER VALUE BETWEEN 0 AND " + str(size)
+				continue
+			if not isinstance(chord[num], int):
+				print "NODE WITH IDENTIFIER " + str(num) + " ALREADY EXISTS"
+				continue
+			n = create_node(num)
+			thread.start_new_thread(join, (n, chord[0]))
+			while finish == 0:
+				waiting = 1
+			finish = 0	
+			# for i in range(0, 32):
+			# 	num = randint(0, 255)
+			# 	#print num
+			# 	if num < 0 or num >= size:
+			# 		print "ENTER VALUE BETWEEN 0 AND " + str(size)
+			# 		continue
+			# 	if not isinstance(chord[num], int):
+			# 		print "NODE WITH IDENTIFIER " + str(num) + " ALREADY EXISTS"
+			# 		continue
+			# 	n = create_node(num)
+			# 	thread.start_new_thread(join, (n, chord[0]))
+			# 	while finish == 0:
+			# 		waiting = 1
+			# 	finish = 0
+			# 	i+=1	
 			val = validate_system()
 			print_system()
 			if(val == True):
@@ -133,7 +133,7 @@ def read_inputs():
 			if isinstance(chord[node], int):
 				print str(node) + " is an integer. Please enter a valid node id."
 				continue
-			remove_node(node)
+			remove_node(chord[node])
 			while finish == 0:
 				waiting = 1
 			finish = 0
@@ -227,11 +227,10 @@ def closest_preceding_finger(n, ident):
 		itr -= 1			
 	return n		
 
-def remove_node(num):
+def remove_node(n):
 	global finish
-	p = chord[num].pred
-	s = chord[num].succ
-	n = chord[num]
+	p = n.pred
+	s = n.succ
 	p.succ = s
 	s.pred = p
 	i = 0
@@ -241,7 +240,7 @@ def remove_node(num):
 		remove_update(p, n, i)
 		i += 1
 
-	chord[num] = num
+	chord[n.id] = n.id
 	finish = 1
 
 
@@ -280,7 +279,6 @@ def update_others(n):
 	while i < m:
 		f = (n.id - pow(2, i)) % size
 		p = find_predecessor(n, f)
-		#print p.id, f, n.id, i
 		if(p.id == n.id and f < p.id):
 			p = n.pred
 		if(p.id == n.id and f >= p.id):
