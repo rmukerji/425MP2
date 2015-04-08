@@ -76,7 +76,7 @@ def read_inputs():
 	global finish
 	import random
 	while 1:
-		command = raw_input('\n--> ')
+		command = raw_input('--> ')
 		if "join" in command: #join command 
 			num = int(command.split(" ")[1])
 			if num < 0 or num >= size:
@@ -124,7 +124,18 @@ def read_inputs():
 			print "Key " + str(key) +  " is located at node " + str(find_node(chord[node_used_to_find], key))
 			while finish == 0:
 				waiting = 1
-			finish = 0	
+			finish = 0
+		elif "leave" in command:
+			node = int(command.split(" ")[1])
+			if node < 0 or node > size:
+				print "Please enter a value between 0 and " + str(size)
+				continue
+			if isinstance(chord[node], int):
+				print str(node) + " is an integer. Please enter a valid node id."
+				continue
+			remove_node(node)
+			val = validate_system()
+			print_system()		
 		elif "show all" in command:
 			show_all()
 			while finish == 0:
@@ -144,16 +155,25 @@ def read_inputs():
 		command = ""
 
 def show(node):
-	p = (chord[node].pred.id + 1) % size
 	counter = 1
 	print "______________ ID: " + str(chord[node].id) + " ______________"
+
+	if(chord[0].pred.id == 0): #0 is the only node in the system
+		for i in range(0, size):
+			sys.stdout.write(str(i) + "\t")
+			if counter % 5 == 0:
+				sys.stdout.write("\n")
+			counter += 1	
+		return		
+
+	p = (chord[node].pred.id + 1) % size
 	while p != (chord[node].id + 1) % size:
 		sys.stdout.write(str(p) + "\t")
 		if counter % 5 == 0:
 			sys.stdout.write("\n")
 		counter += 1
 		p = (p + 1) % size
-	sys.stdout.write("\n")	
+	print "\n"
 
 def show_all():
 	global finish
@@ -200,6 +220,12 @@ def closest_preceding_finger(n, ident):
 		itr -= 1			
 	return n		
 
+def remove_node(num):
+	p = chord[num].pred
+	s = chord[num].succ
+	p.succ = s
+	s.pred = p
+	#need to implement this function
 
 def join(n, n_prime):
 	global finish
@@ -230,6 +256,7 @@ def update_others(n):
 	while i < m:
 		f = (n.id - pow(2, i)) % size
 		p = find_predecessor(n, f)
+		#print p.id, f, n.id, i
 		if(p.id == n.id and f < p.id):
 			p = n.pred
 		if(p.id == n.id and f >= p.id):
