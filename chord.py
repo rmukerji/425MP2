@@ -5,9 +5,9 @@ import time
 import thread
 from threading import current_thread
 from collections import namedtuple
-global finish
-global node_count
+import sys
 from random import randint
+global finish
 m = 8
 size = int(pow(2, m))
 chord = [] #array to represent circular chord system. Each index can either be of type node, or an integer to represent a key
@@ -76,7 +76,7 @@ def read_inputs():
 	global finish
 	import random
 	while 1:
-		command = raw_input('--> ')
+		command = raw_input('\n--> ')
 		if "join" in command: #join command 
 			num = int(command.split(" ")[1])
 			if num < 0 or num >= size:
@@ -113,22 +113,53 @@ def read_inputs():
 				print "CHORD IS INVALID AT NODE " + str(val)
 		elif "find" in command: #find command
 			parsed_command = command.split(" ")
-			node_to_find = int(parsed_command[1])
-			node_used_to_find = int(parsed_command[2])
-			if node_used_to_find < 0 or node_used_to_find >= size or node_to_find < 0 or node_to_find >= size:
+			node_used_to_find = int(parsed_command[1])
+			key = int(parsed_command[2])
+			if node_used_to_find < 0 or node_used_to_find >= size or key < 0 or key >= size:
 				print "Please enter values between 0 and " + str(size) + " for p and k"
 				continue
 			if isinstance(chord[node_used_to_find], int):
 				print str(node_used_to_find) + " is an integer. Please enter a valid node id."
 				continue
-			print "The node which has the key is " + str(find_node(node_to_find, chord[node_used_to_find]))
+			print "Key " + str(key) +  " is located at node " + str(find_node(chord[node_used_to_find], key))
+		elif "show all" in command:
+			show_all()
+		elif "show" in command:
+			node = int(command.split(" ")[1])
+			if node < 0 or node > size:
+				print "Please enter a value between 0 and " + str(size)
+				continue
+			if isinstance(chord[node], int):
+				print str(node) + " is an integer. Please enter a valid node id."
+				continue	
+			show(node)
 		else:
 			print "Please enter a valid command"
 		command = ""
 
+def show(node):
+	p = (chord[node].pred.id + 1) % size
+	counter = 1
+	print "\n"
+	print "______________ ID: " + str(chord[node].id) + " ______________"
+	while p != (chord[node].id + 1) % size:
+		sys.stdout.write(str(p) + "\t")
+		if counter % 5 == 0:
+			sys.stdout.write("\n")
+		counter += 1
+		p = (p + 1) % size
 
-def find_node(node_to_find, n_prime):
-	return find_succesor(n_prime, node_to_find).id
+def show_all():
+	show(chord[0].id)
+	tracker = chord[0].succ.id
+	while tracker != chord[0].id:
+		show(tracker)
+		tracker = chord[tracker].succ.id	
+		sys.stdout.write("\n")
+
+
+def find_node(n_prime, key):
+	return find_succesor(n_prime, key).id
 
 def find_succesor(n, ident):
 	if not isinstance(chord[int(ident)], int):
