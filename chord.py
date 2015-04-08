@@ -122,8 +122,14 @@ def read_inputs():
 				print str(node_used_to_find) + " is an integer. Please enter a valid node id."
 				continue
 			print "Key " + str(key) +  " is located at node " + str(find_node(chord[node_used_to_find], key))
+			while finish == 0:
+				waiting = 1
+			finish = 0	
 		elif "show all" in command:
 			show_all()
+			while finish == 0:
+				waiting = 1
+			finish = 0	
 		elif "show" in command:
 			node = int(command.split(" ")[1])
 			if node < 0 or node > size:
@@ -140,7 +146,6 @@ def read_inputs():
 def show(node):
 	p = (chord[node].pred.id + 1) % size
 	counter = 1
-	print "\n"
 	print "______________ ID: " + str(chord[node].id) + " ______________"
 	while p != (chord[node].id + 1) % size:
 		sys.stdout.write(str(p) + "\t")
@@ -148,18 +153,23 @@ def show(node):
 			sys.stdout.write("\n")
 		counter += 1
 		p = (p + 1) % size
+	sys.stdout.write("\n")	
 
 def show_all():
+	global finish
 	show(chord[0].id)
 	tracker = chord[0].succ.id
 	while tracker != chord[0].id:
 		show(tracker)
 		tracker = chord[tracker].succ.id	
 		sys.stdout.write("\n")
-
+	finish = 1
 
 def find_node(n_prime, key):
-	return find_succesor(n_prime, key).id
+	global finish
+	node = find_succesor(n_prime, key)
+	finish = 1
+	return node.id
 
 def find_succesor(n, ident):
 	if not isinstance(chord[int(ident)], int):
