@@ -290,10 +290,6 @@ def update_others(n):
 def update_finger_table(n, s, i):
 	if(n.finger_table[i][0] == 0):
 		n.finger_table[i][1] = chord[0]	
-	if not isinstance(chord[n.finger_table[i][0]], int):
-		n.finger_table[i][1] = chord[n.finger_table[i][0]]
-		p = n.pred
-		update_finger_table(p, s, i)
 	elif(s.id >= n.finger_table[i][0] and n.finger_table[i][1].id == 0):
 		n.finger_table[i][1] = s
 		p = n.pred
