@@ -51,17 +51,21 @@ def log2(x):
      return log(x)/log(2)
 
 def initialize_system():
+	global channels
 	n = node()
 	n.pred = n
 	n.succ = n
 	n.id = 0
+	for i in range(256):
+		channels.append([0,0,0])
 	for i in range(0, size):
 		chord.append(i)
 		n.key_value[i] = 0
 	for i in range(0, m):
 		fte = [int(pow(2, i)), n]
 		n.finger_table.append(fte)
-	chord[0] = n #index 0 in the chord is a node	
+	chord[0] = n #index 0 in the chord is a node
+	thread.start_new_thread(wait_for_commands,(n,))
 
 def create_node(num):
 	n = node()
@@ -74,6 +78,7 @@ def create_node(num):
 
 def read_inputs():
 	global finish
+	global channels
 	import random
 	while 1:
 		command = raw_input('--> ')
@@ -89,7 +94,7 @@ def read_inputs():
 			thread.start_new_thread(join, (n, chord[0]))
 			while finish == 0:
 				waiting = 1
-			finish = 0	
+			finish = 0
 			# for i in range(0, 32):
 			# 	num = randint(0, 255)
 			# 	#print num
@@ -121,7 +126,14 @@ def read_inputs():
 			if isinstance(chord[node_used_to_find], int):
 				print str(node_used_to_find) + " is an integer. Please enter a valid node id."
 				continue
-			print "Key " + str(key) +  " is located at node " + str(find_node(chord[node_used_to_find], key))
+			channels[node_used_to_find][1] = key
+			channels[node_used_to_find][0] = 5
+			while 1:
+				if channels[node_used_to_find][0] == 6:
+					val = channels[node_used_to_find][1]
+					channels[node_used_to_find][0] = 0
+					break
+			print "Key " + str(key) +  " is located at node " + str(val)
 			while finish == 0:
 				waiting = 1
 			finish = 0
@@ -133,7 +145,12 @@ def read_inputs():
 			if isinstance(chord[node], int):
 				print str(node) + " is an integer. Please enter a valid node id."
 				continue
-			remove_node(chord[node])
+			# remove_node(chord[node])
+			channels[node][0] = 7
+			while 1:
+				if channels[node][0] == 6:
+					channels[node][0] = 0
+					break
 			while finish == 0:
 				waiting = 1
 			finish = 0
@@ -194,11 +211,21 @@ def show_all():
 
 def find_node(n_prime, key):
 	global finish
-	node = find_succesor(n_prime, key)
+	global channels
+	channels[n_prime.id][0] = 1
+	channels[n_prime.id][1] = key
+	node = 1
+	while 1:
+		if channels[n_prime.id][0] == 6:
+			channels[n_prime.id][0] = 0
+			node = channels[n_prime.id][1]
+			break
+	# node = find_succesor(n_prime, key)
 	finish = 1
 	return node.id
 
 def find_succesor(n, ident):
+	global channels
 	if not isinstance(chord[int(ident)], int):
 		return chord[ident]
 
@@ -229,6 +256,7 @@ def closest_preceding_finger(n, ident):
 
 def remove_node(n):
 	global finish
+	global channels
 	p = n.pred
 	s = n.succ
 	p.succ = s
@@ -237,7 +265,14 @@ def remove_node(n):
 	while i < m:
 		f = (n.id - pow(2, i)) % size
 		p = find_predecessor(n, f)
-		remove_update(p, n, i)
+		channels[p.id][1] = n
+		channels[p.id][2] = i
+		channels[p.id][0] = 2
+		while 1:
+			if channels[p.id][0] == 6:
+				channels[p.id][0] = 0
+				break
+		# remove_update(p, n, i)
 		i += 1
 
 	chord[n.id] = n.id
@@ -245,16 +280,63 @@ def remove_node(n):
 
 
 def remove_update(n, s, i):
+	global channels
 	if n.finger_table[i][1].id == s.id:
 		n.finger_table[i][1] = s.succ
 		p = n.pred
-		remove_update(p, s, i)
+		if p.id != n.id:
+			channels[p.id][1] = s
+			channels[p.id][2] = i
+			channels[p.id][0] = 2
+		else:
+			channels[p.id][0] = 6
+			return
+		while 1:
+			if channels[p.id][0] == 6:
+				channels[p.id][0] = 0
+				break
+		# remove_update(p, s, i)
 
 def join(n, n_prime):
 	global finish
+	global channels
 	init_finger_table(n, n_prime)
 	update_others(n)	
 	finish = 1
+	channels[n.id] = [0,0,0]
+	wait_for_commands(n)
+
+def wait_for_commands(node):
+	global channels
+	while 1:
+		curr_val = channels[node.id][0]
+		if curr_val != 0:
+			if curr_val == 1:
+				val = find_succesor(node, channels[node.id][1])
+				channels[node.id][1] = val
+				channels[node.id][0] = 6
+			elif curr_val == 2:
+				remove_update(node, channels[node.id][1], channels[node.id][2])
+				channels[node.id][0] = 6
+			elif curr_val == 3:
+				val = find_predecessor(node, channels[node.id][1])
+				channels[node.id][1] = val
+				channels[node.id][0] = 6
+			elif curr_val == 4:
+				val = closest_preceding_finger(node, channels[node.id][1])
+				channels[node.id][1] = val
+				channels[node.id][0] = 6
+			elif curr_val == 5:
+				val = find_node(node,channels[node.id][1])
+				channels[node.id][1] = val
+				channels[node.id][0] = 6
+			elif curr_val == 7:
+				remove_node(node)
+				channels[node.id][0] = 6
+			#
+			#
+			#
+
 
 def init_finger_table(n, n_prime):
 	n.finger_table[0][1] = find_succesor(n_prime, n.finger_table[0][0])
