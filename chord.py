@@ -159,7 +159,8 @@ def wait_for_command(node):
 	while 1:
 		#for remove_node
 		if(len(rem_node_channel[node.id]) > 0):	
-			remove_node(rem_node_channel[node.id][0])
+			#remove_node(rem_node_channel[node.id][0])
+			thread.start_new_thread(remove_node, (rem_node_channel[node.id][0], ))
 			rem_node_channel[node.id].pop()
 		if(len(rem_update_channel[node.id]) > 0):
 		#for remove_update
