@@ -69,7 +69,7 @@ def initialize_system():
 		fte = [int(pow(2, i)), n]
 		n.finger_table.append(fte)
 	chord[0] = n #index 0 in the chord is a node
-	thread.start_new_thread(wait_for_command, (n,))	
+	thread.start_new_thread(wait_for_command, (n.id,))	
 
 def create_node(num):
 	n = node()
@@ -154,26 +154,35 @@ def read_inputs():
 			print "Please enter a valid command"
 		command = ""
 
-def wait_for_command(node):
+def wait_for_command(ident):
 	global finish
 	while 1:
 		#for remove_node
-		if(len(rem_node_channel[node.id]) > 0):	
+		if(len(rem_node_channel[ident]) > 0):	
 			#remove_node(rem_node_channel[node.id][0])
-			thread.start_new_thread(remove_node, (rem_node_channel[node.id][0], ))
-			rem_node_channel[node.id].pop()
-		if(len(rem_update_channel[node.id]) > 0):
+			thread.start_new_thread(remove_node, (rem_node_channel[ident][0], ))
+			rem_node_channel[ident].pop()
+		if(len(rem_update_channel[ident]) > 0):
 		#for remove_update
-			size = len(rem_update_channel[node.id])
-			n = rem_update_channel[node.id][size - 1][0]
-			s = rem_update_channel[node.id][size - 1][1]
-			i = rem_update_channel[node.id][size - 1][2]
+			size = len(rem_update_channel[ident])
+			n = rem_update_channel[ident][size - 1][0]
+			s = rem_update_channel[ident][size - 1][1]
+			i = rem_update_channel[ident][size - 1][2]
 			remove_update(n, s, i)
-			rem_update_channel[node.id].pop()
-		if(len(find_succ_channel[node.id]) > 0):
+			rem_update_channel[ident].pop()
+		if(len(find_succ_channel[ident]) > 0):
 			a = 1
-		if(len(find_pred_channel[node.id]) > 0):
-			a = 1		
+		if(len(find_pred_channel[ident]) > 0):
+			a = 1	
+
+		if(isinstance(chord[ident], int)): #the node has left
+			return		
+
+def check_remove_done():
+	for i in range(0, size):
+		if(len(rem_node_channel[i]) > 0 or len(rem_update_channel[i]) > 0):
+			return False
+	return True		
 
 
 def show(node):
@@ -256,6 +265,8 @@ def remove_node(n):
 		rem_update_lock.release()
 		i += 1
 
+	while check_remove_done() == False:
+		waiting = 1
 	chord[n.id] = n.id
 	finish = 1
 
@@ -273,7 +284,7 @@ def join(n, n_prime):
 	init_finger_table(n, n_prime)
 	update_others(n)	
 	finish = 1
-	wait_for_command(n)
+	wait_for_command(n.id)
 
 def init_finger_table(n, n_prime):
 	n.finger_table[0][1] = find_succesor(n_prime, n.finger_table[0][0])
