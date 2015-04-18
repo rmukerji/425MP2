@@ -21,7 +21,6 @@ rem_update_lock = Lock()
 update_lock = Lock()
 
 
-
 def print_node(index, n):
 	print "_________" + " Identifier: " + str(index) + " _________"
 	print "Previous: " + str(n.pred.id) + " Successor: " + str(n.succ.id)
@@ -34,26 +33,7 @@ def print_system():
 	for i in range(0, size):
 		if not isinstance(chord[i], int):
 			print_node(i, chord[i])
-			print "--------------------------------------"
-
-def validate_system():
-	global node_count
-	for i in range(0, size):
-		if not isinstance(chord[i], int):
-			n = chord[i]
-			k = 0
-			while k < m:
-				start = n.finger_table[k][0]
-				l = start
-				while 1:
-					if not isinstance(chord[l], int):
-						if chord[l].id != n.finger_table[k][1].id:
-							return n.id
-						else:
-							break	
-					l = (l + 1) % size
-				k += 1
-	return True				
+			print "--------------------------------------"			
 
 def log2(x):
      return log(x)/log(2)
@@ -69,8 +49,6 @@ def initialize_system():
 		rem_update_channel.append([])
 		update_others_channel.append([])
 		update_finger_table_channel.append([])
-		# find_pred_channel.append([])
-		# find_succ_channel.append([])
 	for i in range(0, m):
 		fte = [int(pow(2, i)), n]
 		n.finger_table.append(fte)
@@ -102,14 +80,12 @@ def read_inputs():
 				continue
 			n = create_node(num)
 			thread.start_new_thread(join, (n, chord[0]))
-			val = False
-			while(val != True):	
-				val = validate_system()
+			done = False
+			while(done != True or finish == 0):
+				done = check_done()
 			print_system()
-			if(val == True):
-				print "CHORD IS VALID"
-			# else:
-			# 	print "CHORD IS INVALID AT NODE " + str(val)
+			finish = 0
+			print "CHORD IS VALID"
 		elif "find" in command: #find command
 			parsed_command = command.split(" ")
 			node_used_to_find = int(parsed_command[1])
@@ -133,14 +109,12 @@ def read_inputs():
 				print str(node) + " is an integer. Please enter a valid node id."
 				continue
 			rem_node_channel[node].insert(0, chord[node]) #signal the node to leave by writing in shared queue
-			val = False
-			while(val != True):	
-				val = validate_system()
+			done = False
+			while(done != True):
+				done = check_done()
+			finish = 0	
 			print_system()	
-			if(val == True):
-				print "CHORD IS VALID"
-			# else:
-			# 	print "CHORD IS INVALID AT NODE " + str(val)	
+			print "CHORD IS VALID"	
 		elif "show all" in command:
 			show_all(chord[0])
 			while finish == 0:
@@ -233,31 +207,61 @@ def show_all(s):
 		sys.stdout.write("\n")
 	finish = 1
 
+def check_done():
+	global node_count
+	for i in range(0, size):
+		if not isinstance(chord[i], int):
+			n = chord[i]
+			k = 0
+			while k < m:
+				start = n.finger_table[k][0]
+				l = start
+				while 1:
+					if not isinstance(chord[l], int):
+						if chord[l].id != n.finger_table[k][1].id:
+							return n.id
+						else:
+							break	
+					l = (l + 1) % size
+				k += 1
+	return True		
+
 def find_node(n_prime, key):
 	global finish
-	node = find_succesor(n_prime, key)
+	find_succesor(n_prime, key)
+	while len(find_succ_channel) == 0:
+		waiting = 1
+	node = find_succ_channel[0]
+	find_succ_channel.pop()	
 	finish = 1
 	return node.id
 
 def find_succesor(n, ident):
 	if not isinstance(chord[int(ident)], int):
-		return chord[ident]
-	node_pred = find_predecessor(n, ident)
-	return node_pred.succ
-
+		find_succ_channel.append(chord[int(ident)])
+	else:
+		find_predecessor(n, ident)
+		while len(find_pred_channel) == 0:
+			waiting = 1
+		node_pred = find_pred_channel[0]
+		find_pred_channel.pop()	
+		find_succ_channel.append(node_pred.succ)
 def find_predecessor(n, ident):
 	temp_node = n
 	if not isinstance(chord[int(ident)], int):
-		return chord[int(ident)]
-	while(ident < temp_node.id or ident >= temp_node.succ.id):
-		s = temp_node	
-		temp_node = closest_preceding_finger(temp_node, ident)
-		if temp_node == s:
-			if(ident < temp_node.id):
-				temp_node = temp_node.pred
-			else:
-				return temp_node	
-	return temp_node
+		find_pred_channel.append(chord[int(ident)])
+	else:	
+		while(ident < temp_node.id or ident >= temp_node.succ.id):
+			s = temp_node	
+			temp_node = closest_preceding_finger(temp_node, ident)
+			if temp_node == s:
+				if(ident < temp_node.id):
+					temp_node = temp_node.pred
+				else:
+					find_pred_channel.append(temp_node)
+					break;
+		if(len(find_pred_channel) == 0):				
+			find_pred_channel.append(temp_node)
 
 def closest_preceding_finger(n, ident):
 	itr = m - 1
@@ -276,16 +280,16 @@ def remove_node(n):
 	i = 0
 	while i < m:
 		f = (n.id - pow(2, i)) % size
-		p = find_predecessor(n, f)
+		find_predecessor(n, f)
+		while len(find_pred_channel) == 0:
+			waiting = 1
+		p = find_pred_channel[0]
+		find_pred_channel.pop()	
 		rem_update_lock.acquire()
 		rem_update_channel[p.id].insert(0, [p, n, i])
 		rem_update_lock.release()
 		i += 1
-	while check_remove_done() == False:
-		waiting = 1
-	finish = 1	
 	chord[n.id] = n.id
-
 
 def remove_update(n, s, i):
 	if n.finger_table[i][1].id == s.id:
@@ -301,7 +305,11 @@ def join(n, n_prime):
 	wait_for_command(n.id)
 
 def init_finger_table(n, n_prime):
-	n.finger_table[0][1] = find_succesor(n_prime, n.finger_table[0][0])
+	find_succesor(n_prime, n.finger_table[0][0])
+	while len(find_succ_channel) == 0:
+		waiting = 1
+	n.finger_table[0][1] = find_succ_channel[0]
+	find_succ_channel.pop()	
 	n.succ = n.finger_table[0][1]
 	n.pred = n.succ.pred
 	n.pred.succ = n
@@ -315,7 +323,11 @@ def init_finger_table(n, n_prime):
 		elif(n.finger_table[i + 1][0] >= n.id and n.finger_table[i + 1][0] <= n.finger_table[i][1].id):
 			n.finger_table[i + 1][1] = n.finger_table[i][1]
 		else:
-			n.finger_table[i + 1][1] = find_succesor(n_prime, n.finger_table[i + 1][0])
+			find_succesor(n_prime, n.finger_table[i + 1][0])
+			while len(find_succ_channel) == 0:
+				waiting = 1
+			n.finger_table[i + 1][1] = find_succ_channel[0]
+			find_succ_channel.pop()	
 		i += 1			
 
 def update_others(n):
@@ -323,7 +335,11 @@ def update_others(n):
 	i = 0	
 	while i < m:
 		f = (n.id - pow(2, i)) % size
-		p = find_predecessor(n, f)
+		find_predecessor(n, f)
+		while len(find_pred_channel) == 0:
+			waiting = 1
+		p = find_pred_channel[0]
+		find_pred_channel.pop()	
 		if(p.id == n.id and f < p.id):
 			p = n.pred
 		if(p.id == n.id and f >= p.id):
@@ -332,7 +348,6 @@ def update_others(n):
 		update_lock.acquire()	
 		update_finger_table_channel[n.id].insert(0, [p, n, i])
 		update_lock.release()
-		#update_finger_table(p, n, i)
 		i += 1
 	while check_join_done() == False:
 		waiting = 1
@@ -344,14 +359,12 @@ def update_finger_table(n, s, i):
 	elif(s.id >= n.finger_table[i][0] and n.finger_table[i][1].id == 0):
 		n.finger_table[i][1] = s
 		p = n.pred
-		#update_finger_table(p, s, i)
 		update_lock.acquire()	
 		update_finger_table_channel[p.id].insert(0, [p, s, i])
 		update_lock.release()
 	elif(s.id >= n.finger_table[i][0] and s.id < n.finger_table[i][1].id):
 		n.finger_table[i][1] = s
 		p = n.pred
-		#update_finger_table(p, s, i)
 		update_lock.acquire()	
 		update_finger_table_channel[p.id].insert(0, [p, s, i])
 		update_lock.release()		
