@@ -13,9 +13,13 @@ size = int(pow(2, m))
 chord = [] #array to represent circular chord system. Each index can either be of type node, or an integer to represent a key
 rem_node_channel = []
 rem_update_channel = []
+update_others_channel = []
+update_finger_table_channel = []
 find_pred_channel = []
 find_succ_channel = []
 rem_update_lock = Lock()
+update_lock = Lock()
+
 
 
 def print_node(index, n):
@@ -63,8 +67,10 @@ def initialize_system():
 		chord.append(i)
 		rem_node_channel.append([])
 		rem_update_channel.append([])
-		find_pred_channel.append([])
-		find_succ_channel.append([])
+		update_others_channel.append([])
+		update_finger_table_channel.append([])
+		# find_pred_channel.append([])
+		# find_succ_channel.append([])
 	for i in range(0, m):
 		fte = [int(pow(2, i)), n]
 		n.finger_table.append(fte)
@@ -84,6 +90,7 @@ def read_inputs():
 	global finish
 	import random
 	while 1:
+		global finish
 		command = raw_input('--> ')
 		if "join" in command: #join command 
 			num = int(command.split(" ")[1])
@@ -95,15 +102,14 @@ def read_inputs():
 				continue
 			n = create_node(num)
 			thread.start_new_thread(join, (n, chord[0]))
-			while finish == 0:
-				waiting = 1
-			finish = 0	
-			val = validate_system()
+			val = False
+			while(val != True):	
+				val = validate_system()
 			print_system()
 			if(val == True):
 				print "CHORD IS VALID"
-			else:
-				print "CHORD IS INVALID AT NODE " + str(val)
+			# else:
+			# 	print "CHORD IS INVALID AT NODE " + str(val)
 		elif "find" in command: #find command
 			parsed_command = command.split(" ")
 			node_used_to_find = int(parsed_command[1])
@@ -127,15 +133,14 @@ def read_inputs():
 				print str(node) + " is an integer. Please enter a valid node id."
 				continue
 			rem_node_channel[node].insert(0, chord[node]) #signal the node to leave by writing in shared queue
-			while finish == 0:
-				waiting = 1
-			finish = 0
-			val = validate_system()
+			val = False
+			while(val != True):	
+				val = validate_system()
 			print_system()	
 			if(val == True):
 				print "CHORD IS VALID"
-			else:
-				print "CHORD IS INVALID AT NODE " + str(val)	
+			# else:
+			# 	print "CHORD IS INVALID AT NODE " + str(val)	
 		elif "show all" in command:
 			show_all(chord[0])
 			while finish == 0:
@@ -170,20 +175,32 @@ def wait_for_command(ident):
 			i = rem_update_channel[ident][size - 1][2]
 			remove_update(n, s, i)
 			rem_update_channel[ident].pop()
-		if(len(find_succ_channel[ident]) > 0):
-			a = 1
-		if(len(find_pred_channel[ident]) > 0):
-			a = 1	
-
+		if(len(update_others_channel[ident]) > 0):
+			thread.start_new_thread(update_others, (update_others_channel[ident][0], ))
+			update_others_channel[ident].pop()
+		if(len(update_finger_table_channel[ident]) > 0):
+			#print "Identity: " + str(ident)
+			size = len(rem_update_channel[ident])
+			n = update_finger_table_channel[ident][size - 1][0]
+			s = update_finger_table_channel[ident][size - 1][1]
+			i = update_finger_table_channel[ident][size - 1][2]
+			update_finger_table(n, s, i)
+			update_finger_table_channel[ident].pop()		
+		
 		if(isinstance(chord[ident], int)): #the node has left
 			return		
 
 def check_remove_done():
 	for i in range(0, size):
-		if(len(rem_node_channel[i]) > 0 or len(rem_update_channel[i]) > 0):
+		if(len(rem_update_channel[i]) > 0):
 			return False
 	return True		
 
+def check_join_done():
+	for i in range(0, size):
+		if(len(update_finger_table_channel[i]) > 0):
+			return False
+	return True	
 
 def show(node):
 	counter = 1
@@ -264,11 +281,10 @@ def remove_node(n):
 		rem_update_channel[p.id].insert(0, [p, n, i])
 		rem_update_lock.release()
 		i += 1
-
 	while check_remove_done() == False:
 		waiting = 1
+	finish = 1	
 	chord[n.id] = n.id
-	finish = 1
 
 
 def remove_update(n, s, i):
@@ -280,10 +296,8 @@ def remove_update(n, s, i):
 		rem_update_lock.release()	
 
 def join(n, n_prime):
-	global finish
 	init_finger_table(n, n_prime)
-	update_others(n)	
-	finish = 1
+	update_others_channel[n.id].insert(0, n)
 	wait_for_command(n.id)
 
 def init_finger_table(n, n_prime):
@@ -305,6 +319,7 @@ def init_finger_table(n, n_prime):
 		i += 1			
 
 def update_others(n):
+	global finish
 	i = 0	
 	while i < m:
 		f = (n.id - pow(2, i)) % size
@@ -313,9 +328,15 @@ def update_others(n):
 			p = n.pred
 		if(p.id == n.id and f >= p.id):
 			i += 1
-			continue	
-		update_finger_table(p, n, i)
+			continue
+		update_lock.acquire()	
+		update_finger_table_channel[n.id].insert(0, [p, n, i])
+		update_lock.release()
+		#update_finger_table(p, n, i)
 		i += 1
+	while check_join_done() == False:
+		waiting = 1
+	finish = 1		
 
 def update_finger_table(n, s, i):
 	if(n.finger_table[i][0] == 0):
@@ -323,11 +344,17 @@ def update_finger_table(n, s, i):
 	elif(s.id >= n.finger_table[i][0] and n.finger_table[i][1].id == 0):
 		n.finger_table[i][1] = s
 		p = n.pred
-		update_finger_table(p, s, i)
+		#update_finger_table(p, s, i)
+		update_lock.acquire()	
+		update_finger_table_channel[p.id].insert(0, [p, s, i])
+		update_lock.release()
 	elif(s.id >= n.finger_table[i][0] and s.id < n.finger_table[i][1].id):
 		n.finger_table[i][1] = s
 		p = n.pred
-		update_finger_table(p, s, i)		
+		#update_finger_table(p, s, i)
+		update_lock.acquire()	
+		update_finger_table_channel[p.id].insert(0, [p, s, i])
+		update_lock.release()		
 
 def main():
 	global finish
