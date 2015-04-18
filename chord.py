@@ -8,6 +8,9 @@ from collections import namedtuple
 import sys
 from random import randint
 global finish
+global message_count
+global find_count
+
 m = 8
 size = int(pow(2, m))
 chord = [] #array to represent circular chord system. Each index can either be of type node, or an integer to represent a key
@@ -66,11 +69,14 @@ def create_node(num):
 
 def read_inputs():
 	global finish
+	global message_count
+	global find_count
 	import random
 	while 1:
 		global finish
 		command = raw_input('--> ')
 		if "join" in command: #join command 
+			message_count = 0	
 			num = int(command.split(" ")[1])
 			if num < 0 or num >= size:
 				print "ENTER VALUE BETWEEN 0 AND " + str(size)
@@ -82,11 +88,11 @@ def read_inputs():
 			thread.start_new_thread(join, (n, chord[0]))
 			done = False
 			while(done != True or finish == 0):
-				done = check_done()
-			print_system()
+				done = check_done()	
+			#print_system()
 			finish = 0
-			print "CHORD IS VALID"
 		elif "find" in command: #find command
+			find_count = 0
 			parsed_command = command.split(" ")
 			node_used_to_find = int(parsed_command[1])
 			key = int(parsed_command[2])
@@ -101,6 +107,7 @@ def read_inputs():
 				waiting = 1
 			finish = 0
 		elif "leave" in command:
+			message_count = 0	
 			node = int(command.split(" ")[1])
 			if node < 0 or node > size:
 				print "Please enter a value between 0 and " + str(size)
@@ -112,9 +119,7 @@ def read_inputs():
 			done = False
 			while(done != True):
 				done = check_done()
-			finish = 0	
-			print_system()	
-			print "CHORD IS VALID"	
+			finish = 0
 		elif "show all" in command:
 			show_all(chord[0])
 			while finish == 0:
@@ -128,13 +133,18 @@ def read_inputs():
 			if isinstance(chord[node], int):
 				print str(node) + " is an integer. Please enter a valid node id."
 				continue	
-			show(chord[node])
+			show(chord[node], -1)
+		elif "mc" in command:
+			print "Number of messages: " + str(message_count * 2)
+		elif "fc" in command:
+			print "Number of messages: " + str(find_count * 2)		
 		else:
 			print "Please enter a valid command"
 		command = ""
 
 def wait_for_command(ident):
 	global finish
+	global message_count
 	while 1:
 		#for remove_node
 		if(len(rem_node_channel[ident]) > 0):	
@@ -176,38 +186,63 @@ def check_join_done():
 			return False
 	return True	
 
-def show(node):
+def show(node, f):
 	counter = 1
-	print "______________ ID: " + str(node.id) + " ______________"
-
+	#print "______________ ID: " + str(node.id) + " ______________"
+	if(f != -1):
+		f.write(str(node.id) + " ")	
 	if(node.id == 0 and node.pred.id == 0): #0 is the only node in the system
 		for i in range(0, size):
-			sys.stdout.write(str(i) + "\t")
-			if counter % 5 == 0:  
-				sys.stdout.write("\n")
-			counter += 1	
+			#sys.stdout.write(str(i) + "\t")
+			#if counter % 5 == 0:  
+				#sys.stdout.write("\n")
+			if(f != -1):	
+				f.write(str(i) + " ")		
+			counter += 1		
 		return		
-
-	p = (node.pred.id + 1) % size
-	while p != (node.id + 1) % size:
-		sys.stdout.write(str(p) + "\t")
-		if counter % 5 == 0:
-			sys.stdout.write("\n")
-		counter += 1
-		p = (p + 1) % size
-	print "\n"
+	if(node.id == 0):
+		p = node.pred.id + 1
+		#sys.stdout.write(str(0) + "\t")
+		if(f != -1):	
+			f.write(str(0) + " ")
+		counter += 1		
+		while p < size:
+			#sys.stdout.write(str(p) + "\t")
+			#if counter % 5 == 0:
+				#sys.stdout.write("\n")
+			if(f != -1):	
+				f.write(str(p) + " ")	
+			counter += 1
+			p += 1
+		#print "\n"	
+	else:	
+		p = (node.pred.id + 1) % size
+		while p != (node.id + 1) % size:
+			#sys.stdout.write(str(p) + "\t")
+			#if counter % 5 == 0:
+				#sys.stdout.write("\n")
+			if(f != -1):	
+				f.write(str(p) + " ")	
+			counter += 1
+			p = (p + 1) % size
+		#print "\n"
 
 def show_all(s):
 	global finish
-	show(s)
+	global f
+	global message_count
+	show(s, f)
+	f.write("\n")
 	tracker = s.succ
 	while tracker.id != s.id:
-		show(tracker)
+		show(tracker, f)
 		tracker = tracker.succ	
-		sys.stdout.write("\n")
+		#sys.stdout.write("\n")
+		f.write("\n")
 	finish = 1
 
 def check_done():
+	global message_count
 	global node_count
 	for i in range(0, size):
 		if not isinstance(chord[i], int):
@@ -227,6 +262,7 @@ def check_done():
 	return True		
 
 def find_node(n_prime, key):
+	global message_count
 	global finish
 	find_succesor(n_prime, key)
 	while len(find_succ_channel) == 0:
@@ -237,6 +273,7 @@ def find_node(n_prime, key):
 	return node.id
 
 def find_succesor(n, ident):
+	global message_count
 	if not isinstance(chord[int(ident)], int):
 		find_succ_channel.append(chord[int(ident)])
 	else:
@@ -247,6 +284,8 @@ def find_succesor(n, ident):
 		find_pred_channel.pop()	
 		find_succ_channel.append(node_pred.succ)
 def find_predecessor(n, ident):
+	global message_count
+	global find_count
 	temp_node = n
 	if not isinstance(chord[int(ident)], int):
 		find_pred_channel.append(chord[int(ident)])
@@ -254,6 +293,9 @@ def find_predecessor(n, ident):
 		while(ident < temp_node.id or ident >= temp_node.succ.id):
 			s = temp_node	
 			temp_node = closest_preceding_finger(temp_node, ident)
+			#print "Find Predecessor"
+			message_count += 1
+			find_count += 1
 			if temp_node == s:
 				if(ident < temp_node.id):
 					temp_node = temp_node.pred
@@ -264,6 +306,7 @@ def find_predecessor(n, ident):
 			find_pred_channel.append(temp_node)
 
 def closest_preceding_finger(n, ident):
+	global message_count
 	itr = m - 1
 	while itr >= 0:
 		if(n.id < n.finger_table[itr][1].id and n.finger_table[itr][1].id < ident):
@@ -273,6 +316,7 @@ def closest_preceding_finger(n, ident):
 
 def remove_node(n):
 	global finish
+	global message_count
 	p = n.pred
 	s = n.succ
 	p.succ = s
@@ -287,16 +331,19 @@ def remove_node(n):
 		find_pred_channel.pop()	
 		rem_update_lock.acquire()
 		rem_update_channel[p.id].insert(0, [p, n, i])
+		message_count += 1
 		rem_update_lock.release()
 		i += 1
 	chord[n.id] = n.id
 
 def remove_update(n, s, i):
+	global message_count
 	if n.finger_table[i][1].id == s.id:
 		n.finger_table[i][1] = s.succ
 		p = n.pred
 		rem_update_lock.acquire()
 		rem_update_channel[p.id].insert(0, [p, s, i])
+		message_count += 1
 		rem_update_lock.release()	
 
 def join(n, n_prime):
@@ -305,6 +352,7 @@ def join(n, n_prime):
 	wait_for_command(n.id)
 
 def init_finger_table(n, n_prime):
+	global message_count
 	find_succesor(n_prime, n.finger_table[0][0])
 	while len(find_succ_channel) == 0:
 		waiting = 1
@@ -331,6 +379,7 @@ def init_finger_table(n, n_prime):
 		i += 1			
 
 def update_others(n):
+	global message_count
 	global finish
 	i = 0	
 	while i < m:
@@ -347,13 +396,14 @@ def update_others(n):
 			continue
 		update_lock.acquire()	
 		update_finger_table_channel[n.id].insert(0, [p, n, i])
+		#print "Update Others"
+		message_count += 1
 		update_lock.release()
 		i += 1
-	while check_join_done() == False:
-		waiting = 1
 	finish = 1		
 
 def update_finger_table(n, s, i):
+	global message_count
 	if(n.finger_table[i][0] == 0):
 		n.finger_table[i][1] = chord[0]	
 	elif(s.id >= n.finger_table[i][0] and n.finger_table[i][1].id == 0):
@@ -361,19 +411,31 @@ def update_finger_table(n, s, i):
 		p = n.pred
 		update_lock.acquire()	
 		update_finger_table_channel[p.id].insert(0, [p, s, i])
+		#print "update_finger_table"
+		#message_count += 1
 		update_lock.release()
 	elif(s.id >= n.finger_table[i][0] and s.id < n.finger_table[i][1].id):
 		n.finger_table[i][1] = s
 		p = n.pred
 		update_lock.acquire()	
 		update_finger_table_channel[p.id].insert(0, [p, s, i])
+		#print "update_finger_table"
+		message_count += 1
 		update_lock.release()		
 
 def main():
 	global finish
+	global filename
+	global f
+	global message_count
+	global find_count
+	find_count = 0
+	message_count = 0
+	filename = sys.argv[2]
+	f = open(filename,'wb')
 	finish = 0
 	initialize_system() #initializes the system with a node at position 0
-	print_system()
+	#print_system()
 	thread.start_new_thread(read_inputs, ())
 	while 1:
 		waiting = 1
