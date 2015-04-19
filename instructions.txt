@@ -1,0 +1,4 @@
+Rohit Mukerji: rmukerj2
+Nimit Agrawal: nagrawa3
+
+To run program: python chord.py -g FILENAME

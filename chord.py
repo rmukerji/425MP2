@@ -117,7 +117,7 @@ def read_inputs():
 				continue
 			rem_node_channel[node].insert(0, chord[node]) #signal the node to leave by writing in shared queue
 			done = False
-			while(done != True):
+			while(done != True or finish == 0):
 				done = check_done()
 			finish = 0
 		elif "show all" in command:
@@ -133,11 +133,7 @@ def read_inputs():
 			if isinstance(chord[node], int):
 				print str(node) + " is an integer. Please enter a valid node id."
 				continue	
-			show(chord[node], -1)
-		elif "mc" in command:
-			print "Number of messages: " + str(message_count * 2)
-		elif "fc" in command:
-			print "Number of messages: " + str(find_count * 2)		
+			show(chord[node])	
 		else:
 			print "Please enter a valid command"
 		command = ""
@@ -186,32 +182,29 @@ def check_join_done():
 			return False
 	return True	
 
-def show(node, f):
+def show(node):
+	global f
 	counter = 1
 	#print "______________ ID: " + str(node.id) + " ______________"
-	if(f != -1):
-		f.write(str(node.id) + " ")	
+	f.write(str(node.id) + " ")	
 	if(node.id == 0 and node.pred.id == 0): #0 is the only node in the system
 		for i in range(0, size):
 			#sys.stdout.write(str(i) + "\t")
 			#if counter % 5 == 0:  
-				#sys.stdout.write("\n")
-			if(f != -1):	
-				f.write(str(i) + " ")		
+				#sys.stdout.write("\n")	
+			f.write(str(i) + " ")		
 			counter += 1		
 		return		
 	if(node.id == 0):
 		p = node.pred.id + 1
 		#sys.stdout.write(str(0) + "\t")
-		if(f != -1):	
-			f.write(str(0) + " ")
+		f.write(str(0) + " ")
 		counter += 1		
 		while p < size:
 			#sys.stdout.write(str(p) + "\t")
 			#if counter % 5 == 0:
-				#sys.stdout.write("\n")
-			if(f != -1):	
-				f.write(str(p) + " ")	
+				#sys.stdout.write("\n")	
+			f.write(str(p) + " ")	
 			counter += 1
 			p += 1
 		#print "\n"	
@@ -220,25 +213,23 @@ def show(node, f):
 		while p != (node.id + 1) % size:
 			#sys.stdout.write(str(p) + "\t")
 			#if counter % 5 == 0:
-				#sys.stdout.write("\n")
-			if(f != -1):	
-				f.write(str(p) + " ")	
+				#sys.stdout.write("\n")	
+			f.write(str(p) + " ")	
 			counter += 1
 			p = (p + 1) % size
 		#print "\n"
+	f.write("\n")	
 
 def show_all(s):
 	global finish
 	global f
 	global message_count
-	show(s, f)
-	f.write("\n")
+	show(s)
 	tracker = s.succ
 	while tracker.id != s.id:
-		show(tracker, f)
+		show(tracker)
 		tracker = tracker.succ	
 		#sys.stdout.write("\n")
-		f.write("\n")
 	finish = 1
 
 def check_done():
@@ -335,6 +326,7 @@ def remove_node(n):
 		rem_update_lock.release()
 		i += 1
 	chord[n.id] = n.id
+	finish = 1
 
 def remove_update(n, s, i):
 	global message_count
